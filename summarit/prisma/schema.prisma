@@ -1,0 +1,23 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model WeeklyReport {
+  id         Int      @id @default(autoincrement())
+  userName   String
+  role       String   // 'student' only for now
+  weekNumber Int
+  date       String
+  hours      Int
+  activities String
+  score      Int
+  learnings  String
+  createdAt  DateTime @default(now())
+}
+
+
