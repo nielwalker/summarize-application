@@ -33,6 +33,12 @@ powershell -NoProfile -Command "Set-Location 'C:\Users\Admin\Desktop\summarize a
 ```powershell
 powershell -NoProfile -Command "Set-Location 'C:\Users\Admin\Desktop\summarize application\frontend'; npm run lint"
 ```
+## Start Both backend and frontend
+
+```powershell
+.\start.bat
+```
+
 
 ## Routes
 
