@@ -4,7 +4,8 @@ import { prisma } from '@/lib/prisma'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+  // Include dev header for quick testing
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-openai-key'
 }
 
 export async function OPTIONS() {
@@ -30,9 +31,25 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const prompt = `Summarize the following practicum weekly reports in 3-5 sentences. Then estimate alignment (0-100) for PO1..PO15 as integers.
-Return strict JSON: {"summary": string, "poScores": [15 numbers] }.
-Text:\n${inputText}`
+  const poDefinitions = `
+PO1 (A): Apply knowledge of computing, science, and mathematics in solving computing/IT-related problems.
+PO2 (B): Use current best practices and standards in solving complex computing/IT-related problems.
+PO3 (C): Analyze complex computing/IT-related problems; define appropriate computing requirements.
+PO4 (D): Identify and analyze user needs and consider them in computer-based systems.
+PO5 (E): Design, implement, and evaluate computer-based systems to meet needs under constraints.
+PO6 (F): Integrate IT-based solutions considering public health/safety, cultural, societal, environmental concerns.
+PO7 (G): Select/adapt/apply appropriate techniques, resources, skills, and modern tools with awareness of limits.
+PO8 (H): Work effectively individually and in diverse/multidisciplinary/multicultural teams; lead when needed.
+PO9 (I): Assist in the creation of effective IT project plans.
+PO10 (J): Communicate effectively in oral and written forms to diverse audiences.
+PO11 (K): Assess local/global impact of IT on individuals, organizations, and society.
+PO12 (L): Act ethically and responsibly regarding professional, legal, security, and social considerations.
+PO13 (M): Pursue independent learning; keep pace with latest IT developments (DB/IS, Networks, CV/Imaging).
+PO14 (N): Participate in R&D aligned to local/national goals; contribute to the economy.
+PO15 (O): Preserve and promote Filipino historical and cultural heritage.
+`
+
+  const prompt = `You are scoring practicum weekly reports against Program Outcomes (PO1..PO15). Use ONLY the following PO definitions as your rubric:\n\n${poDefinitions}\n\nTask:\n1) Summarize the learner's work in 3-5 concise sentences.\n2) Return a numeric alignment score for each PO1..PO15 in [0,100], integers only. A PO with no clear evidence must get 0. Do not infer beyond the text.\n\nReturn strict JSON exactly as: {"summary": string, "poScores": [15 numbers in order PO1..PO15] }.\n\nReports text:\n${inputText}`
 
   try {
     const resp = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -44,7 +61,7 @@ Text:\n${inputText}`
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [
-          { role: 'system', content: 'You are a concise summarizer that outputs strict JSON.' },
+          { role: 'system', content: 'You output STRICT JSON only. No prose outside JSON.' },
           { role: 'user', content: prompt }
         ],
         temperature: 0.2

@@ -1,6 +1,6 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
-import RequireAuth from './components/RequireAuth'
+// Auth not required per latest requirement
 
 const LoginPage = lazy(() => import('./screens/LoginPage'))
 const StudentDashboard = lazy(() => import('./screens/student/StudentDashboard'))
@@ -12,27 +12,15 @@ export const router = createBrowserRouter([
   { path: '/login', element: <Suspense fallback={null}><LoginPage /></Suspense> },
   {
     path: '/student',
-    element: (
-      <RequireAuth roles={["student"]}>
-        <Suspense fallback={null}><StudentDashboard /></Suspense>
-      </RequireAuth>
-    ),
+    element: <Suspense fallback={null}><StudentDashboard /></Suspense>,
   },
   {
     path: '/coordinator',
-    element: (
-      <RequireAuth roles={["coordinator"]}>
-        <Suspense fallback={null}><CoordinatorDashboard /></Suspense>
-      </RequireAuth>
-    ),
+    element: <Suspense fallback={null}><CoordinatorDashboard /></Suspense>,
   },
   {
     path: '/chairman',
-    element: (
-      <RequireAuth roles={["chairman"]}>
-        <Suspense fallback={null}><ChairmanDashboard /></Suspense>
-      </RequireAuth>
-    ),
+    element: <Suspense fallback={null}><ChairmanDashboard /></Suspense>,
   },
 ])
 

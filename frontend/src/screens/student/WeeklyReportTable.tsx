@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuthStore } from '../../store/auth'
 
 type WeekEntry = {
@@ -7,74 +7,102 @@ type WeekEntry = {
   activities: string
   score: number | ''
   learnings: string
+  submitted?: boolean
 }
 
-function createInitialWeeks(): WeekEntry[] {
-  return Array.from({ length: 13 }, () => ({ date: '', hours: '', activities: '', score: '', learnings: '' }))
+function createBlankEntry(): WeekEntry {
+  return { date: '', hours: '', activities: '', score: '', learnings: '', submitted: false }
+}
+
+function createInitialWeeks(): WeekEntry[][] {
+  // 13 weeks, 6 rows per week
+  return Array.from({ length: 13 }, () => Array.from({ length: 6 }, () => createBlankEntry()))
 }
 
 export function WeeklyReportTable() {
   const [currentWeek, setCurrentWeek] = useState(1)
-  const [weeks, setWeeks] = useState<WeekEntry[]>(createInitialWeeks())
+  const [weeks, setWeeks] = useState<WeekEntry[][]>(createInitialWeeks())
   const { userName, role } = useAuthStore()
 
-  function updateField<K extends keyof WeekEntry>(idx: number, key: K, value: WeekEntry[K]) {
+  function updateField<K extends keyof WeekEntry>(rowIdx: number, key: K, value: WeekEntry[K]) {
     setWeeks((prev) => {
-      const next = [...prev]
-      next[idx] = { ...next[idx], [key]: value }
+      const next = prev.map((weekRows) => weekRows.slice())
+      const weekIndex = currentWeek - 1
+      // Any edit marks the row as not submitted yet
+      next[weekIndex][rowIdx] = { ...next[weekIndex][rowIdx], [key]: value, submitted: false }
       return next
     })
   }
 
-  async function submitWeek(idx: number) {
-    const entry = weeks[idx]
-    console.log('Submit week', idx + 1, entry)
+  async function loadReports() {
     try {
-      const ports = [
-        import.meta.env.VITE_API_PORT ? Number(import.meta.env.VITE_API_PORT) : 3000,
-        3001, 3002, 3003, 3004
-      ]
-      const base = import.meta.env.VITE_API_URL
-        || `http://localhost:${ports[0]}`
-      let res = await fetch(`${base}/api/reports`, {
+      const base = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+      const name = userName ?? 'student'
+      const res = await fetch(`${base}/api/reports?userName=${encodeURIComponent(name)}`)
+      if (!res.ok) return
+      const items: Array<{ weekNumber: number; date: string; hours: number; activities: string; score: number; learnings: string }>
+        = await res.json()
+      // Build new 13x6 table and fill per week in insertion order
+      const grid = createInitialWeeks()
+      const buckets = new Map<number, WeekEntry[]>()
+      for (const it of items) {
+        const list = buckets.get(it.weekNumber) ?? []
+        list.push({ date: it.date, hours: it.hours, activities: it.activities, score: it.score, learnings: it.learnings, submitted: true })
+        buckets.set(it.weekNumber, list)
+      }
+      for (const [wk, list] of buckets) {
+        const wkIdx = Math.max(0, Math.min(12, wk - 1))
+        for (let i = 0; i < Math.min(6, list.length); i++) {
+          grid[wkIdx][i] = list[i]
+        }
+      }
+      setWeeks(grid)
+    } catch {}
+  }
+
+  useEffect(() => {
+    loadReports()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  async function submitWeek(rowIdx: number) {
+    const entry = weeks[currentWeek - 1][rowIdx]
+    console.log('Submit week', currentWeek, 'row', rowIdx + 1, entry)
+    try {
+      const base = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+      const res = await fetch(`${base}/api/reports`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userName: userName ?? 'student',
           role: role ?? 'student',
-          weekNumber: idx + 1,
+          weekNumber: currentWeek,
           ...entry,
           hours: entry.hours === '' ? 0 : entry.hours,
           score: entry.score === '' ? 0 : entry.score,
         }),
       })
-      // Fallback: try additional common Next.js ports if first failed
+      
       if (!res.ok) {
-        for (const p of ports.slice(1)) {
-          const alt = `http://localhost:${p}`
-          try {
-            const attempt = await fetch(`${alt}/api/reports`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                userName: userName ?? 'student',
-                role: role ?? 'student',
-                weekNumber: idx + 1,
-                ...entry,
-                hours: entry.hours === '' ? 0 : entry.hours,
-                score: entry.score === '' ? 0 : entry.score,
-              }),
-            })
-            if (attempt.ok) { res = attempt; break }
-          } catch {}
-        }
+        const errorText = await res.text()
+        console.error('API Error:', res.status, errorText)
+        throw new Error(`Save failed (${res.status}): ${errorText}`)
       }
-      if (!res.ok) throw new Error(`Save failed (${res.status})`)
-      // Optionally, give simple feedback
-      alert(`Week ${idx + 1} saved`)
+      
+      const result = await res.json()
+      console.log('Save successful:', result)
+      // Mark this row as submitted after successful save
+      setWeeks((prev) => {
+        const next = prev.map((w) => w.slice())
+        next[currentWeek - 1][rowIdx] = { ...next[currentWeek - 1][rowIdx], submitted: true }
+        return next
+      })
+      // Reload from server to persist across refresh
+      loadReports()
+      alert(`Week ${currentWeek} - Row ${rowIdx + 1} saved successfully!`)
     } catch (e) {
-      console.error(e)
-      alert('Failed to save. Make sure the API server is running (tried ports 3000-3004).')
+      console.error('Submit error:', e)
+      alert(`Failed to save: ${e.message}`)
     }
   }
 
@@ -101,26 +129,26 @@ export function WeeklyReportTable() {
             </tr>
           </thead>
           <tbody>
-            {weeks.map((w, idx) => (
-              <tr key={idx} style={{ background: currentWeek === idx + 1 ? '#f9fafb' : undefined }}>
+            {weeks[currentWeek - 1].map((row, rowIdx) => (
+              <tr key={rowIdx}>
                 <td>
-                  <input type="date" value={w.date} onChange={(e) => updateField(idx, 'date', e.target.value)} />
+                  <input type="date" value={row.date} onChange={(e) => updateField(rowIdx, 'date', e.target.value)} />
                 </td>
                 <td>
-                  <input type="number" value={w.hours} onChange={(e) => updateField(idx, 'hours', e.target.value === '' ? '' : Number(e.target.value))} />
+                  <input type="number" value={row.hours} onChange={(e) => updateField(rowIdx, 'hours', e.target.value === '' ? '' : Number(e.target.value))} />
                 </td>
                 <td>
-                  <input style={{ width: 320 }} value={w.activities} onChange={(e) => updateField(idx, 'activities', e.target.value)} />
+                  <input style={{ width: 320 }} value={row.activities} onChange={(e) => updateField(rowIdx, 'activities', e.target.value)} />
                 </td>
                 <td>
-                  <input type="number" value={w.score} onChange={(e) => updateField(idx, 'score', e.target.value === '' ? '' : Number(e.target.value))} />
+                  <input type="number" value={row.score} onChange={(e) => updateField(rowIdx, 'score', e.target.value === '' ? '' : Number(e.target.value))} />
                 </td>
                 <td>
-                  <input style={{ width: 320 }} value={w.learnings} onChange={(e) => updateField(idx, 'learnings', e.target.value)} />
+                  <input style={{ width: 320 }} value={row.learnings} onChange={(e) => updateField(rowIdx, 'learnings', e.target.value)} />
                 </td>
-                <td>{w.date && w.hours !== '' && w.activities ? 'Submitted' : 'Missing'}</td>
+                <td>{row.date && row.hours !== '' && row.activities ? 'Submitted' : 'Missing'}</td>
                 <td>
-                  <button onClick={() => submitWeek(idx)}>Submit</button>
+                  <button onClick={() => submitWeek(rowIdx)}>Submit</button>
                 </td>
               </tr>
             ))}

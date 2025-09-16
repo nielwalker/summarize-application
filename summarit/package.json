@@ -12,20 +12,21 @@
     "prisma:studio": "prisma studio"
   },
   "dependencies": {
-    "@prisma/client": "^6.0.1",
     "mysql2": "^3.14.4",
     "next": "15.5.2",
+    "openai": "^5.20.3",
     "react": "19.1.0",
     "react-dom": "19.1.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@prisma/client": "^6.16.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.5.2",
-    "prisma": "^6.0.1",
+    "prisma": "^6.16.1",
     "typescript": "^5"
   }
 }

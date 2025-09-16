@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -18,6 +18,14 @@ model WeeklyReport {
   score      Int
   learnings  String
   createdAt  DateTime @default(now())
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  userName  String   @unique
+  role      String   // 'student' | 'coordinator' | 'chairman'
+  approved  Boolean  @default(false)
+  createdAt DateTime @default(now())
 }
 
 
