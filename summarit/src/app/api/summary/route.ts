@@ -4,7 +4,6 @@ import { prisma } from '@/lib/prisma'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  // Include dev header for quick testing
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-openai-key'
 }
 
@@ -13,15 +12,35 @@ export async function OPTIONS() {
 }
 
 export async function POST(req: NextRequest) {
-  const { text } = await req.json().catch(() => ({ text: '' })) as { text: string }
-  // If no text provided, aggregate from recent reports for simple demo
+  const { text, section, studentId } = await req.json().catch(() => ({ text: '', section: undefined, studentId: undefined })) as { text: string; section?: string; studentId?: string }
+
+  // If no text provided, aggregate from recent reports
   let inputText = text
   if (!inputText) {
-    const recent = await prisma.weeklyReport.findMany({ take: 20, orderBy: { id: 'desc' } })
-    inputText = recent.map(r => `Week ${r.weekNumber}: ${r.activities}. Learnings: ${r.learnings}. Score: ${r.score}.`).join(' ')
+    const where: any = {}
+    if (section) where.section = section
+    if (studentId) where.studentId = studentId
+
+    const recent = await prisma.weeklyReport.findMany({ 
+      where, 
+      take: 50, 
+      orderBy: { id: 'desc' } 
+    })
+
+    inputText = recent.map(r => {
+      const student = r.userName || r.studentId || 'Unknown'
+      return `Student: ${student} | Week ${r.weekNumber} | Activities: ${r.activities} | Learnings: ${r.learnings} | Hours: ${r.hours} | Score: ${r.score}`
+    }).join('\n')
+
+    if (!inputText.trim()) {
+      return NextResponse.json(
+        { summary: 'No reports found for the selected criteria.', poScores: Array.from({ length: 15 }, () => 0) },
+        { headers: corsHeaders as Record<string, string> }
+      )
+    }
   }
 
-  // Prefer server env; allow dev override via header for local testing
+  // Prefer server env; allow dev override via header
   const headerKey = req.headers.get('x-openai-key') || undefined
   const apiKey = process.env.OPENAI_API_KEY || headerKey
   if (!apiKey) {
@@ -49,7 +68,32 @@ PO14 (N): Participate in R&D aligned to local/national goals; contribute to the 
 PO15 (O): Preserve and promote Filipino historical and cultural heritage.
 `
 
-  const prompt = `You are scoring practicum weekly reports against Program Outcomes (PO1..PO15). Use ONLY the following PO definitions as your rubric:\n\n${poDefinitions}\n\nTask:\n1) Summarize the learner's work in 3-5 concise sentences.\n2) Return a numeric alignment score for each PO1..PO15 in [0,100], integers only. A PO with no clear evidence must get 0. Do not infer beyond the text.\n\nReturn strict JSON exactly as: {"summary": string, "poScores": [15 numbers in order PO1..PO15] }.\n\nReports text:\n${inputText}`
+  const prompt = `
+You are an expert evaluator analyzing practicum weekly reports against Program Outcomes (PO1–PO15). 
+You must follow strict keyword matching methodology.
+
+PO DEFINITIONS (use as rubric, do not paraphrase):
+${poDefinitions}
+
+METHODOLOGY:
+1. Count keyword matches for each PO.
+2. TotalMatches = sum of all matches across all POs.
+3. For each PO, calculate percentage:
+   (MatchesForPO ÷ TotalMatches) × 100
+4. If TotalMatches = 0, return all zeros.
+5. Only assign scores to POs with actual keyword matches.
+6. All percentages must be integers and the array must sum to 100 (normalize if needed).
+7. Create a compact technical summary (≤ 15 words) highlighting main actions, tools, or topics found.
+
+OUTPUT FORMAT (strict JSON only):
+{
+  "summary": "compact technical summary",
+  "poScores": [15 integers, each 0–100, must sum to 100]
+}
+
+REPORTS TO ANALYZE (section=${section ?? 'ALL'}):
+${inputText}
+`
 
   try {
     const resp = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -61,10 +105,15 @@ PO15 (O): Preserve and promote Filipino historical and cultural heritage.
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [
-          { role: 'system', content: 'You output STRICT JSON only. No prose outside JSON.' },
+          { 
+            role: 'system', 
+            content: 'You are a precise evaluator. Output ONLY valid JSON. No explanations outside JSON.' 
+          },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.2
+        temperature: 0.1,
+        max_tokens: 500,
+        top_p: 0.9
       })
     })
 
@@ -84,15 +133,30 @@ PO15 (O): Preserve and promote Filipino historical and cultural heritage.
       try {
         parsed = JSON.parse(content)
       } catch {
-        // attempt to extract JSON block
         const match = content.match(/\{[\s\S]*\}/)
         if (match) parsed = JSON.parse(match[0])
       }
     }
 
-    // Fallback shape to avoid frontend crashes
     if (!Array.isArray(parsed.poScores) || parsed.poScores.length !== 15) {
       parsed.poScores = Array.from({ length: 15 }, () => 0)
+    }
+
+    if (parsed.summary && parsed.summary.split(' ').length > 15) {
+      const words = parsed.summary.split(' ')
+      parsed.summary = words.slice(0, 15).join(' ') + '...'
+    }
+
+    parsed.poScores = parsed.poScores.map(score => {
+      const num = Number(score)
+      return isNaN(num) ? 0 : Math.max(0, Math.min(100, Math.round(num)))
+    })
+
+    const totalScore = parsed.poScores.reduce((sum, score) => sum + score, 0)
+    if (totalScore > 0 && totalScore !== 100) {
+      parsed.poScores = parsed.poScores.map(score => 
+        Math.round((score / totalScore) * 100)
+      )
     }
 
     return NextResponse.json(parsed, { headers: corsHeaders as Record<string, string> })
@@ -103,5 +167,3 @@ PO15 (O): Preserve and promote Filipino historical and cultural heritage.
     )
   }
 }
-
-

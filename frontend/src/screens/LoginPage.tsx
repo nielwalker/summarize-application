@@ -1,42 +1,63 @@
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { UserRole } from '../store/auth'
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const [role, setRole] = useState<UserRole>('student')
-  const [step, setStep] = useState<'selectRole' | 'auth'>('selectRole')
-  const [mode, setMode] = useState<'login' | 'register' | null>(null)
-  const [userName, setUserName] = useState('')
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    // No login required; just route by role selection
-    navigate(`/${role}`)
-  }
 
   return (
     <div style={{ maxWidth: 440, margin: '64px auto', padding: 16 }}>
-      <h2>Select Role</h2>
-      <form onSubmit={handleSubmit}>
-        <div style={{ display: 'grid', gap: 12 }}>
-          <label>
-            <div>Role</div>
-            <select value={role} onChange={(e) => setRole(e.target.value as UserRole)} disabled={step==='auth'}>
-              <option value="student">Student</option>
-              <option value="coordinator">Coordinator</option>
-              <option value="chairman">Chairman</option>
-            </select>
-          </label>
+      <h2>Select Your Role</h2>
+      <div style={{ display: 'grid', gap: 16 }}>
+        <button 
+          onClick={() => navigate('/login/student')}
+          style={{
+            padding: '16px 24px',
+            fontSize: '16px',
+            backgroundColor: '#3b82f6',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            textAlign: 'left'
+          }}
+        >
+          <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Student</div>
+          <div style={{ fontSize: '14px', opacity: 0.9 }}>Login with your Student ID to submit weekly reports</div>
+        </button>
 
-          <p style={{ color: '#888', fontSize: 12 }}>
-            - Chairman can create own account (auto-approved).<br />
-            - Coordinator accounts require chairman approval.<br />
-            - Student accounts are created/approved by chairman/coordinator.
-          </p>
-          <button type="submit">Continue</button>
-        </div>
-      </form>
+        <button 
+          onClick={() => navigate('/login/coordinator')}
+          style={{
+            padding: '16px 24px',
+            fontSize: '16px',
+            backgroundColor: '#059669',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            textAlign: 'left'
+          }}
+        >
+          <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Coordinator</div>
+          <div style={{ fontSize: '14px', opacity: 0.9 }}>Login to view and manage student reports</div>
+        </button>
+
+        <button 
+          onClick={() => navigate('/login/chairman')}
+          style={{
+            padding: '16px 24px',
+            fontSize: '16px',
+            backgroundColor: '#dc2626',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            textAlign: 'left'
+          }}
+        >
+          <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Chairman</div>
+          <div style={{ fontSize: '14px', opacity: 0.9 }}>Login to register students and coordinators</div>
+        </button>
+      </div>
     </div>
   )
 }
