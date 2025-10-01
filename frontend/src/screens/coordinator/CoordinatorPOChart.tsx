@@ -26,7 +26,7 @@ const PO_DEFS: Array<{ code: string; label: string; desc: string }> = [
   { code: "O", label: "PO15", desc: "Preserve and promote Filipino historical and cultural heritage." },
 ];
 
-export function CoordinatorPOChart({ section, studentId, title }: { section?: string; studentId?: string; title?: string }) {
+export function CoordinatorPOChart({ section, studentId, title, selectedWeek }: { section?: string; studentId?: string; title?: string; selectedWeek?: number }) {
   const [scores, setScores] = useState<number[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
@@ -242,9 +242,20 @@ export function CoordinatorPOChart({ section, studentId, title }: { section?: st
         return { scores: Array.from({ length: 15 }, () => 0), sentence: 'No reports found for analysis.' }
       }
 
+      // Filter reports by selected week if specified
+      let filteredReports = reports
+      if (selectedWeek && selectedWeek > 0) {
+        filteredReports = reports.filter((report: any) => (report.weekNumber || 1) === selectedWeek)
+        console.log(`Filtered reports for week ${selectedWeek}:`, filteredReports)
+        
+        if (filteredReports.length === 0) {
+          return { scores: Array.from({ length: 15 }, () => 0), sentence: `No reports found for Week ${selectedWeek}.` }
+        }
+      }
+
       // Group reports by week
       const reportsByWeek = new Map<number, any[]>()
-      reports.forEach((report: any) => {
+      filteredReports.forEach((report: any) => {
         const week = report.weekNumber || 1
         if (!reportsByWeek.has(week)) {
           reportsByWeek.set(week, [])
@@ -300,7 +311,9 @@ export function CoordinatorPOChart({ section, studentId, title }: { section?: st
       // Create comprehensive sentence
       const sentence = weeklySentences.length > 0 
         ? weeklySentences.join(' ')
-        : 'No specific program outcomes identified across all weeks.'
+        : selectedWeek 
+          ? `No specific program outcomes identified for Week ${selectedWeek}.`
+          : 'No specific program outcomes identified across all weeks.'
 
       return { scores: normalizedScores, sentence }
     } catch (error) {
@@ -328,7 +341,7 @@ export function CoordinatorPOChart({ section, studentId, title }: { section?: st
     }
 
     run()
-  }, [section, studentId])
+  }, [section, studentId, selectedWeek])
 
   const data = useMemo(() => {
     const values = scores ?? Array.from({ length: 15 }, () => 0);

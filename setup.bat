@@ -1,35 +1,99 @@
 @echo off
-echo Setting up the Summarize Application...
+echo ========================================
+echo Student Practicum Report Management System
+echo Setup Script for Windows
+echo ========================================
 echo.
+
+echo Checking Node.js installation...
+node --version >nul 2>&1
+if %errorlevel% neq 0 (
+    echo ERROR: Node.js is not installed!
+    echo Please install Node.js from https://nodejs.org/
+    pause
+    exit /b 1
+)
+echo Node.js is installed ✓
+
+echo.
+echo Checking npm installation...
+npm --version >nul 2>&1
+if %errorlevel% neq 0 (
+    echo ERROR: npm is not installed!
+    pause
+    exit /b 1
+)
+echo npm is installed ✓
+
+echo.
+echo ========================================
+echo Setting up Backend (summarit)
+echo ========================================
+cd summarit
+
+echo Installing backend dependencies...
+call npm install
+if %errorlevel% neq 0 (
+    echo ERROR: Failed to install backend dependencies!
+    pause
+    exit /b 1
+)
+echo Backend dependencies installed ✓
+
+echo.
+echo Checking for .env.local file...
+if not exist .env.local (
+    echo WARNING: .env.local file not found!
+    echo Creating template .env.local file...
+    echo # Database Configuration > .env.local
+    echo DATABASE_URL="postgresql://username:password@localhost:5432/database_name" >> .env.local
+    echo. >> .env.local
+    echo # OpenAI API Key >> .env.local
+    echo OPENAI_API_KEY="your-openai-api-key-here" >> .env.local
+    echo. >> .env.local
+    echo # Supabase Configuration >> .env.local
+    echo SUPABASE_URL="your-supabase-url" >> .env.local
+    echo SUPABASE_KEY="your-supabase-service-role-key" >> .env.local
+    echo.
+    echo Please edit .env.local with your actual database credentials!
+    echo.
+)
+
+echo Generating Prisma client...
+call npx prisma generate
+if %errorlevel% neq 0 (
+    echo WARNING: Prisma generate failed. You may need to set up your database first.
+)
+
+echo.
+echo ========================================
+echo Setting up Frontend (frontend)
+echo ========================================
+cd ..\frontend
 
 echo Installing frontend dependencies...
-cd frontend
 call npm install
 if %errorlevel% neq 0 (
-    echo Frontend installation failed!
+    echo ERROR: Failed to install frontend dependencies!
     pause
     exit /b 1
 )
+echo Frontend dependencies installed ✓
 
 echo.
-echo Installing backend dependencies...
-cd ..\summarit
-call npm install
-if %errorlevel% neq 0 (
-    echo Backend installation failed!
-    pause
-    exit /b 1
-)
-
+echo ========================================
+echo Setup Complete!
+echo ========================================
 echo.
-echo Setup complete! 
+echo IMPORTANT: Before running the application:
+echo 1. Edit summarit\.env.local with your database credentials
+echo 2. Set up your database (PostgreSQL or Supabase)
+echo 3. Run: npx prisma db push (in summarit folder)
 echo.
-echo Next steps:
-echo 1. Create .env file in frontend/ directory with VITE_API_URL=http://localhost:3000
-echo 2. Create .env.local file in summarit/ directory with your database and API keys
-echo 3. Run 'npx prisma generate' and 'npx prisma db push' in the summarit/ directory
-echo 4. Start the backend: cd summarit && npm run dev
-echo 5. Start the frontend: cd frontend && npm run dev
+echo To start the application:
+echo 1. Backend: cd summarit && npm run dev
+echo 2. Frontend: cd frontend && npm run dev
 echo.
-echo See SETUP_INSTRUCTIONS.md for detailed instructions.
+echo Access the application at: http://localhost:5173
+echo.
 pause

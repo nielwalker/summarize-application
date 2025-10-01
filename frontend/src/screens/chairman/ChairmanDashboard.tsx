@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom'
 export default function ChairmanDashboard() {
   const navigate = useNavigate()
   const [section, setSection] = useState('IT4R8')
+  const [selectedWeek, setSelectedWeek] = useState<number>(1)
   const [studentId, setStudentId] = useState('')
   const [studentName, setStudentName] = useState('')
   const [companyName, setCompanyName] = useState('')
@@ -14,6 +15,7 @@ export default function ChairmanDashboard() {
   const [msg, setMsg] = useState<string>('')
 
   const ALL_SECTIONS = ['IT4R8', 'IT4R9', 'IT4R10', 'IT4R11']
+  const ALL_WEEKS = Array.from({ length: 13 }, (_, i) => i + 1) // Weeks 1-13
 
   async function registerStudent() {
     setMsg('')
@@ -54,7 +56,7 @@ export default function ChairmanDashboard() {
         setMsg(`Register coordinator failed: ${t}`)
         return
       }
-      setMsg('Coordinator registered (awaiting approval)')
+      setMsg('Coordinator registered')
       setCoordName('')
       setCoordSection('IT4R8')
     } catch (e: any) {
@@ -305,6 +307,26 @@ export default function ChairmanDashboard() {
               {ALL_SECTIONS.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontWeight: '500', color: '#000000' }}>Week:</span>
+            <select 
+              value={selectedWeek} 
+              onChange={(e) => setSelectedWeek(Number(e.target.value))}
+              style={{
+                padding: '6px 12px',
+                border: '1px solid #d1d5db',
+                borderRadius: '4px',
+                backgroundColor: 'white',
+                color: '#000000'
+              }}
+            >
+              {ALL_WEEKS.map(week => (
+                <option key={week} value={week}>
+                  Week {week}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
         
         <div style={{ 
@@ -316,7 +338,11 @@ export default function ChairmanDashboard() {
           minHeight: '900px',
           overflow: 'visible'
         }}>
-          <CoordinatorPOChart section={section} title={`Section ${section}`} />
+          <CoordinatorPOChart 
+            section={section} 
+            selectedWeek={selectedWeek}
+            title={`Section ${section} - Week ${selectedWeek}`} 
+          />
         </div>
       </div>
     </DashboardShell>

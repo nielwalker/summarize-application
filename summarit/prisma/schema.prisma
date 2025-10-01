@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model WeeklyReport {
+  id          Int      @id @default(autoincrement())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userName    String
+  role        String
+  section     String
+  studentId   String?
+  weekNumber  Int
+  date        String
+  hours       Int
+  activities  String
+  score       Int
+  learnings   String
+}
+
+model StudentEnrollment {
+  studentId   String  @id @unique
+  userName    String
+  section     String
+  companyName String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Coordinator {
+  id        Int      @id @default(autoincrement())
+  userName  String   @unique
+  sections  String[]
+  approved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Company {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

@@ -9,24 +9,47 @@ export default function CoordinatorDashboard() {
   const [studentId, setStudentId] = useState('')
   const [students, setStudents] = useState<Array<{ studentId: string; userName: string; companyName?: string }>>([])
   const [selectedStudent, setSelectedStudent] = useState<{ studentId: string; userName: string; companyName?: string } | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const base = (import.meta as any).env.VITE_API_URL || 'http://localhost:3000'
-    fetch(`${base}/api/admin?action=listStudents&section=${encodeURIComponent(section)}`)
-      .then(r => r.json())
-      .then(data => {
+    const fetchStudents = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const base = (import.meta as any).env.VITE_API_URL || 'http://localhost:3000'
+        const response = await fetch(`${base}/api/admin?action=listStudents&section=${encodeURIComponent(section)}`)
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch students: ${response.status}`)
+        }
+        
+        const data = await response.json()
+        
+        // Check if response contains error
+        if (data.error) {
+          throw new Error(data.error)
+        }
+        
         // Ensure we always set an array
         if (Array.isArray(data)) {
           setStudents(data)
+          console.log(`Loaded ${data.length} students for section ${section}:`, data)
         } else {
           console.error('Expected array but got:', data)
           setStudents([])
+          setError('Invalid response format from server')
         }
-      })
-      .catch(err => {
+      } catch (err: any) {
         console.error('Error fetching students:', err)
         setStudents([])
-      })
+        setError(err.message || 'Failed to load students')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchStudents()
   }, [section])
 
   const handleStudentChange = (selectedStudentId: string) => {
@@ -37,6 +60,46 @@ export default function CoordinatorDashboard() {
     } else {
       setSelectedStudent(null)
     }
+  }
+
+  const refreshStudents = () => {
+    const fetchStudents = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const base = (import.meta as any).env.VITE_API_URL || 'http://localhost:3000'
+        const response = await fetch(`${base}/api/admin?action=listStudents&section=${encodeURIComponent(section)}`)
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch students: ${response.status}`)
+        }
+        
+        const data = await response.json()
+        
+        // Check if response contains error
+        if (data.error) {
+          throw new Error(data.error)
+        }
+        
+        // Ensure we always set an array
+        if (Array.isArray(data)) {
+          setStudents(data)
+          console.log(`Refreshed ${data.length} students for section ${section}:`, data)
+        } else {
+          console.error('Expected array but got:', data)
+          setStudents([])
+          setError('Invalid response format from server')
+        }
+      } catch (err: any) {
+        console.error('Error fetching students:', err)
+        setStudents([])
+        setError(err.message || 'Failed to load students')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchStudents()
   }
 
   return (
@@ -120,22 +183,72 @@ export default function CoordinatorDashboard() {
             <select 
               value={studentId} 
               onChange={(e) => handleStudentChange(e.target.value)}
+              disabled={loading}
               style={{
                 padding: '6px 12px',
                 border: '1px solid #d1d5db',
                 borderRadius: '4px',
-                backgroundColor: 'white',
-                color: '#000000',
-                minWidth: '200px'
+                backgroundColor: loading ? '#f3f4f6' : 'white',
+                color: loading ? '#6b7280' : '#000000',
+                minWidth: '200px',
+                cursor: loading ? 'not-allowed' : 'pointer'
               }}
             >
-              <option value="">Select Student</option>
+              <option value="">
+                {loading ? 'Loading students...' : students.length === 0 ? 'No students found' : 'Select Student'}
+              </option>
               {students.map((s) => (
                 <option key={s.studentId} value={s.studentId}>{s.studentId} — {s.userName}</option>
               ))}
             </select>
           </label>
+          <button
+            onClick={refreshStudents}
+            disabled={loading}
+            style={{
+              padding: '6px 12px',
+              backgroundColor: loading ? '#9ca3af' : '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              fontSize: '14px',
+              fontWeight: '500',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+          >
+            🔄 {loading ? 'Loading...' : 'Refresh'}
+          </button>
         </div>
+        
+        {error && (
+          <div style={{ 
+            marginBottom: '20px', 
+            padding: '12px',
+            backgroundColor: '#fef2f2',
+            border: '1px solid #fecaca',
+            borderRadius: '8px',
+            color: '#dc2626'
+          }}>
+            <strong>Error:</strong> {error}
+          </div>
+        )}
+        
+        {loading && (
+          <div style={{ 
+            marginBottom: '20px', 
+            padding: '12px',
+            backgroundColor: '#f0f9ff',
+            border: '1px solid #bae6fd',
+            borderRadius: '8px',
+            color: '#0369a1',
+            textAlign: 'center'
+          }}>
+            Loading students for section {section}...
+          </div>
+        )}
         
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
           {studentId && selectedStudent ? (

@@ -86,24 +86,24 @@ export default function StudentDashboard() {
         
         {error && <div style={{ marginBottom: 16, color: 'crimson' }}>Error: {error}</div>}
         
-        {studentDetails && (
+        {studentDetails && studentDetails.student && (
           <div style={{ 
             marginBottom: 24, 
             padding: 16, 
             backgroundColor: '#f8f9fa', 
             borderRadius: 8, 
-            border: '1px solidrgb(7, 9, 12)' 
+            border: '1px solid #e5e7eb' 
           }}>
             <h3 style={{ margin: '0 0 12px 0', color: '#000000' }}>Student Information</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, color: '#000000' }}>
               <div>
-                <strong>Name:</strong> {studentDetails.student.userName}
+                <strong>Name:</strong> {studentDetails.student.userName || 'Unknown'}
               </div>
               <div>
-                <strong>Student ID:</strong> {studentDetails.student.studentId}
+                <strong>Student ID:</strong> {studentDetails.student.studentId || 'Unknown'}
               </div>
               <div>
-                <strong>Section:</strong> {studentDetails.student.section}
+                <strong>Section:</strong> {studentDetails.student.section || 'Unknown'}
               </div>
               <div>
                 <strong>Company:</strong> {studentDetails.student.companyName || 'Not assigned'}
