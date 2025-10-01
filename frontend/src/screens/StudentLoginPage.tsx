@@ -15,7 +15,7 @@ export default function StudentLoginPage() {
 
     setLoading(true)
     try {
-      const apiUrl = 'http://localhost:3000/api/login'
+      const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/login`
       const body = { studentId, role: 'student' }
 
       const resp = await fetch(apiUrl, {
