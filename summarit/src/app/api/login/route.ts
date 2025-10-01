@@ -25,10 +25,15 @@ export async function POST(req: NextRequest) {
 
     if (role === 'student') {
       try {
+        // Test database connection first
+        console.log('Attempting to connect to database for student:', studentId)
+        
         // Check if student is registered by chairman in database (SECURITY VALIDATION)
         const student = await prisma.studentEnrollment.findUnique({
           where: { studentId }
         })
+        
+        console.log('Database query result:', student)
         
         if (!student) {
           return NextResponse.json({ 
@@ -49,10 +54,15 @@ export async function POST(req: NextRequest) {
           companyName: student.companyName
         }, { headers: corsHeaders as Record<string, string> })
       } catch (error: any) {
-        console.error('Database error:', error)
+        console.error('Database error in login API:', error)
+        console.error('Error details:', {
+          message: error.message,
+          code: error.code,
+          meta: error.meta
+        })
         return NextResponse.json({ 
           error: 'Database connection failed. Please try again later.',
-          details: 'Unable to verify student registration.'
+          details: `Unable to verify student registration. Error: ${error.message}`
         }, { status: 500, headers: corsHeaders as Record<string, string> })
       }
     } else {
