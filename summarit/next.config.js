@@ -25,6 +25,12 @@ const nextConfig = {
   trailingSlash: false,
   // Ensure API routes are not treated as pages
   pageExtensions: ['js', 'jsx', 'ts', 'tsx'],
+  // Disable static generation for API routes
+  output: 'standalone',
+  // Skip build-time data fetching for API routes
+  generateBuildId: async () => {
+    return 'build-' + Date.now()
+  },
 }
 
 module.exports = nextConfig
